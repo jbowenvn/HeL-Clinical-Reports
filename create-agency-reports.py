@@ -1,3 +1,4 @@
+from asyncore import write
 from contextlib import nullcontext
 from email.mime import base
 import getpass
@@ -15,7 +16,6 @@ from tkinter import filedialog
 
 ### GLOBAL VARIABLES ###
 base_folder = ""
-log_file = None
 report_date = ""
 output_folder = ""
 
@@ -47,10 +47,10 @@ def write_to_log(message):
 
 def main():
 
-    # write_to_log("Starting import.")
-    # write_to_log("")
+    global log_file
+    global full_report
+    global patient_counts
 
-    # write_to_log("Import of all extracts completed.")
     user_name = getpass.getuser()
     base_folder = "C:\\Users\\{user_name}\\Value Network\\Value Network - Data Analytics\\HEALTHeLINK\\Clinical Reporting\\".format(
         user_name=user_name
@@ -76,6 +76,39 @@ def main():
     )
 
     report_date = input("Enter date of roster used to generate report:")
+
+    write_to_log("Starting agency reports creation.")
+    write_to_log("Report file: {report_file}".format(report_file=file_path))
+    write_to_log("Output folder: {output_folder}".format(output_folder=output_folder))
+    write_to_log("Report date: {report_date}".format(report_date=report_date))
+    write_to_log("")
+
+    write_to_log("Loading workbook...")
+    workbook = load_workbook(filename=file_path)
+    sheet = workbook["Sheet1"]
+
+    sheet_data = sheet.values
+    sheet_headers = next(sheet_data)[0:]
+
+    full_report = pd.DataFrame(sheet_data, columns=sheet_headers)
+    write_to_log(
+        "{number_rows} read from workbook".format(number_rows=full_report.shape[0])
+    )
+
+    patient_counts = full_report[["Agency", "CID"]].groupby(["Agency"]).count()
+
+    for group_name, agency_group in patient_counts:
+
+        for row_index, row in agency_group.iterrows():
+
+            agency_name = row["Agency"]
+            patient_count = row["CID"]
+
+            write_to_log(
+                "{agency_name}: {patient_count}".format(
+                    agency_name=agency_name, patient_count=patient_count
+                )
+            )
 
     log_file.close()
 
